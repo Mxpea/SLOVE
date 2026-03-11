@@ -1,7 +1,8 @@
-# 这是一个课题项目
+# S.L.O.V.E
 
 项目全称:  
 Similarity Learning for Online Video Exploration (e.g. SLOVE)  
+一个视频推荐算法demo  
 
 全程使用AI开发
 
