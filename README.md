@@ -1,6 +1,7 @@
 # 这是一个课题项目
 
-全程使用ai驱动
+项目全程
+Similarity Learning for Online Video Exploration (e.g. SLOVE)
 
 ## 引用说明
 
