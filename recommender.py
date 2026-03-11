@@ -8,6 +8,16 @@ class VideoRecommender:
         # 1. 加载数据
         self.df = pd.read_csv(data_path)
         
+        # 统一处理列名差异：如果 CSV 含有 'id' 或 'tag'，将其重命名为我们需要使用的标准名
+        if 'id' in self.df.columns:
+            self.df.rename(columns={'id': 'video_id'}, inplace=True)
+        if 'tag' in self.df.columns:
+            self.df.rename(columns={'tag': 'tags'}, inplace=True)
+        
+        # 填充缺失值为字符串空，防止字符串拼接报错
+        self.df['title'] = self.df['title'].fillna('')
+        self.df['tags'] = self.df['tags'].fillna('')
+
         # 2. 数据预处理：文本合并 (Title + Tags)
         self.df['text'] = self.df['title'] + " " + self.df['tags']
         
@@ -20,9 +30,11 @@ class VideoRecommender:
         self.video_id_to_idx = {vid: idx for idx, vid in enumerate(self.df['video_id'])}
         self.idx_to_video_id = {idx: vid for idx, vid in enumerate(self.df['video_id'])}
 
-    def get_all_videos(self):
+    def get_all_videos(self, limit=50):
         """返回所有视频信息"""
-        return self.df[['video_id', 'title', 'tags']].to_dict(orient='records')
+        # 防止你的 videos.csv 数据量太大(上万条)时瞬间传给前端导致浏览器直接卡死崩溃
+        # 我们在这里做了一个截断，列表页随机(或按顺序)展示 50 条用于演示即可
+        return self.df[['video_id', 'title', 'tags']].head(limit).to_dict(orient='records')
 
     def get_video(self, video_id):
         """获取单个视频信息"""

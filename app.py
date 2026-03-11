@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, send_from_directory
 from recommender import VideoRecommender
 
 app = Flask(__name__)
@@ -7,6 +7,7 @@ app = Flask(__name__)
 # 获取当前文件所在真实目录，确保系统在任何路径下启动都能正确加载相对路径下的CSV
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CSV_PATH = os.path.join(BASE_DIR, 'data', 'videos.csv')
+VIDEO_DIR = os.path.join(BASE_DIR, 'videodataset')
 
 # 系统启动时加载数据和生成TF-IDF矩阵
 recommender = VideoRecommender(CSV_PATH)
@@ -14,8 +15,21 @@ recommender = VideoRecommender(CSV_PATH)
 # --- 页面路由 (Frontend) ---
 
 @app.route('/')
-def index():
-    return render_template('index.html')
+def home():
+    # 强制将根目录那个带 3D 特效的 index.html 设为首页
+    return send_from_directory(BASE_DIR, 'index.html')
+
+@app.route('/<filename>')
+def serve_root_files(filename):
+    # 使加载 3D 模型文件 (inner.glb, outer.glb) 不会报 404
+    if filename.endswith('.glb'):
+        return send_from_directory(BASE_DIR, filename)
+    return "Not Found", 404
+
+@app.route('/demo')
+def demo():
+    # 点进系统后展示的是推荐列表页
+    return render_template('demo.html')
 
 @app.route('/video/<int:video_id>')
 def video(video_id):
@@ -24,6 +38,11 @@ def video(video_id):
 @app.route('/explain')
 def explain():
     return render_template('explain.html')
+
+# 提供本地视频文件的访问路由
+@app.route('/videodataset/<filename>')
+def serve_video(filename):
+    return send_from_directory(VIDEO_DIR, filename)
 
 # --- API 路由 (Backend) ---
 

@@ -12,16 +12,18 @@
             <h2>短视频推荐系统 Demo</h2>
         </div>
         <nav>
-            <a href="/">首页</a>
+            <a href="/">返回酷炫主页</a>
+            <a href="/demo">视频列表</a>
             <a href="/explain">推荐原理</a>
         </nav>
     </header>
 
     <div class="container play-layout">
         <div class="main-content">
-            <div class="video-player-mock" id="player-title">
-                Loading...
-            </div>
+            <!-- 使用真实的 HTML5 video 标签，动态加载对应的 mp4 文件 -->
+            <video id="video-player" class="video-player-mock" controls autoplay style="background-color: #000; width: 100%;">
+                您的浏览器不支持视频播放。
+            </video>
             <h2 id="video-title">...</h2>
             <p><strong>标签 / Tags: </strong> <span id="video-tags" class="tags"></span></p>
         </div>
@@ -47,7 +49,10 @@
             fetch(`/api/video/${currentVideoId}`)
                 .then(res => res.json())
                 .then(data => {
-                    document.getElementById('player-title').innerText = "▶ " + data.title;
+                    // 设置视频源 (指向我们新增的Flask静态文件路由)
+                    const videoPlayer = document.getElementById('video-player');
+                    videoPlayer.src = `/videodataset/${currentVideoId}.mp4`;
+
                     document.getElementById('video-title').innerText = data.title;
                     document.getElementById('video-tags').innerText = data.tags;
                 });

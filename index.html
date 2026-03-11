@@ -146,6 +146,41 @@
       box-shadow: 0 0 20px rgba(255, 43, 214, 0.5);
       transform: translateY(-2px);
     }
+
+    /* === 移动端适配 === */
+    @media (max-width: 768px) {
+      .top-nav {
+        flex-direction: column;
+        padding: 15px;
+        gap: 15px;
+      }
+      .nav-logo {
+        font-size: 22px;
+      }
+      .nav-links {
+        gap: 15px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .hero-title {
+        font-size: 32px;
+        letter-spacing: 2px;
+        margin-bottom: 15px;
+      }
+      .hero-desc {
+        font-size: 14px;
+        padding: 0 10px;
+        margin-bottom: 25px;
+      }
+      .button-group {
+        flex-direction: column;
+        width: 100%;
+        max-width: 280px;
+      }
+      .glow-btn {
+        text-align: center;
+      }
+    }
   </style>
 </head>
 <body>
@@ -157,8 +192,8 @@
   <nav class="top-nav">
     <div class="nav-logo">S.L.O.V.E</div>
     <div class="nav-links">
-      <a href="http://127.0.0.1:5000/" target="_blank">Home</a>
-      <a href="http://127.0.0.1:5000/explain" target="_blank">Docs</a>
+      <a href="/demo">Home</a>
+      <a href="/explain">Docs</a>
       <a href="https://github.com/Mxpea/SLOVE" target="_blank">GitHub</a>
     </div>
   </nav>
@@ -171,8 +206,8 @@
       Explore vector space models, TF-IDF and Cosine Similarity in a minimalist environment.
     </p>
     <div class="button-group">
-      <a href="http://127.0.0.1:5000/" class="glow-btn btn-primary" target="_blank">Launch Demo</a>
-      <a href="http://127.0.0.1:5000/explain" class="glow-btn btn-secondary" target="_blank">Technical Docs</a>
+      <a href="/demo" class="glow-btn btn-primary">Launch Demo</a>
+      <a href="/explain" class="glow-btn btn-secondary">Technical Docs</a>
     </div>
   </div>
 </div>
