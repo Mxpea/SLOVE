@@ -5,7 +5,8 @@ Similarity Learning for Online Video Exploration (e.g. SLOVE)
 一个视频推荐算法demo  
 
 全程使用AI开发
-
+主页使用了我的另一个[项目](https://github.com/Mxpea/WEB-MEController)
+的代码
 ## 引用说明
 
 本项目使用了 [MicroLens 数据集](https://github.com/westlake-repl/MicroLens/) ，相关研究请引用原论文：
