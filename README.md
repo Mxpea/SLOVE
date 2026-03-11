@@ -1,5 +1,7 @@
 # 这是一个课题项目
 
+全程使用ai驱动
+
 ## 引用说明
 
 本项目使用了 [MicroLens 数据集](https://github.com/westlake-repl/MicroLens/) ，相关研究请引用原论文：

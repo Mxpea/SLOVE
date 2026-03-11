@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>播放视频 - 推荐系统 Demo</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-video-id="{{ video_id }}">
+    <header>
+        <div>
+            <h2>短视频推荐系统 Demo</h2>
+        </div>
+        <nav>
+            <a href="/">首页</a>
+            <a href="/explain">推荐原理</a>
+        </nav>
+    </header>
+
+    <div class="container play-layout">
+        <div class="main-content">
+            <div class="video-player-mock" id="player-title">
+                Loading...
+            </div>
+            <h2 id="video-title">...</h2>
+            <p><strong>标签 / Tags: </strong> <span id="video-tags" class="tags"></span></p>
+        </div>
+        
+        <div class="sidebar">
+            <h3>猜你喜欢</h3>
+            <div id="recommendations-list">
+                <p>加载推荐中...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 安全地从 HTML 属性中获取 Jinja 渲染的变量
+            const currentVideoId = parseInt(document.body.dataset.videoId, 10);
+
+            // 记录到本地浏览历史中
+            addVideoToHistory(currentVideoId);
+
+            // 获取当前视频信息
+            fetch(`/api/video/${currentVideoId}`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('player-title').innerText = "▶ " + data.title;
+                    document.getElementById('video-title').innerText = data.title;
+                    document.getElementById('video-tags').innerText = data.tags;
+                });
+
+            // 获取推荐列表 (基于当前记录的完整历史)
+            const history = getHistory();
+            fetch('/api/recommend', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ history: history })
+            })
+            .then(res => res.json())
+            .then(data => {
+                const recList = document.getElementById('recommendations-list');
+                recList.innerHTML = '';
+                if (data.recommendations && data.recommendations.length > 0) {
+                    data.recommendations.forEach(r => {
+                        const item = document.createElement('div');
+                        item.className = 'rec-item';
+                        item.onclick = () => window.location.href = `/video/${r.video_id}`;
+                        item.innerHTML = `
+                            <h4>${r.title} <span class="score-badge">${(r.score).toFixed(2)}</span></h4>
+                            <p>${r.tags}</p>
+                        `;
+                        recList.appendChild(item);
+                    });
+                } else {
+                    recList.innerHTML = '<p>暂时没有更多推荐。</p>';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

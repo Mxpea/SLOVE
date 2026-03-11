@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>推荐原理解释 - 推荐系统 Demo</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- 引入 MathJax 用于数学公式渲染 -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <header>
+        <div>
+            <h2>短视频推荐系统 Demo</h2>
+        </div>
+        <nav>
+            <a href="/">首页</a>
+        </nav>
+    </header>
+
+    <div class="container" style="background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <h1 style="color: #2980b9;">基于高等数学的推荐系统原理</h1>
+        
+        <p>本 Demo 为了保护用户隐私，<strong>不会在服务器存储任何用户数据</strong>。所有的观看历史仅保存在浏览器本地的 <code>LocalStorage</code> 中。</p>
+        <p>当请求推荐时，客户端将历史列表发送给系统，系统动态执行以下四个步骤进行计算：</p>
+
+        <h3>1. 词频-逆文档频率 (TF-IDF)</h3>
+        <p>我们将视频的标题（Title）和标签（Tags）合并成一段文本，并通过 TF-IDF（Term Frequency-Inverse Document Frequency）技术将其转换为高维空间中的数学矩阵。</p>
+        <p>公式表示为：</p>
+        <div class="math-formula">
+            $$ \text{TF-IDF}(t, d, D) = \text{TF}(t, d) \times \text{IDF}(t, D) $$
+        </div>
+        <p>其中 $t$ 是词汇，$d$ 是某一个视频文本，$D$ 是所有视频的语料库。经过此步骤，每个视频 $V_i$ 都变成了特征空间中的一个固定维度的向量（Vector）。</p>
+
+        <h3>2. 生成用户兴趣向量 (Vector Averaging)</h3>
+        <p>我们在获取到用户观看过的历史视频列表后，怎么表示“用户当前的兴趣”呢？我们可以简单地将其看作是其观看过的视频向量中心的平均点（质心）。</p>
+        <p>数学表达如下（假设用户看过的视频为 $V_1, V_2, \dots, V_n$）：</p>
+        <div class="math-formula">
+            $$ U = \frac{1}{n} \sum_{i=1}^{n} V_i $$
+        </div>
+        <p>其中 $U$ 即代表了当前用户的**兴趣向量**。</p>
+
+        <h3>3. 余弦相似度计算 (Cosine Similarity)</h3>
+        <p>有了用户兴趣向量 $U$ 以及所有视频候选库向量 $V_j$，我们在高维空间中计算 $U$ 和 $V_j$ 之间夹角 $\theta$ 的余弦值。余弦值越接近于 1，说明两个向量的方向越一致（即内容越相似）。</p>
+        <div class="math-formula">
+            $$ \text{Similarity}(U, V_j) = \cos(\theta) = \frac{U \cdot V_j}{\|U\| \|V_j\|} $$
+        </div>
+
+        <h3>4. 排序与截断 (Top-N)</h3>
+        <p>最后，系统会将计算得出的相似度从大到小进行排序，并且会主动剔除掉那些用户已经观看过的视频。保留排名前 $N$ (比如 Top 5) 的视频，作为最终推荐结果返回给前端进行展示。</p>
+        
+        <div style="margin-top: 40px; text-align: center;">
+            <button onclick="window.location.href='/'" style="padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">返回首页体验</button>
+        </div>
+    </div>
+</body>
+</html>
