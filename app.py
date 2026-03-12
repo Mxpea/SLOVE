@@ -14,6 +14,10 @@ recommender = VideoRecommender(CSV_PATH)
 
 # --- 页面路由 (Frontend) ---
 
+@app.route('/icon.png')
+def serve_icon():
+    return send_from_directory(BASE_DIR, 'icon.png')
+
 @app.route('/')
 def home():
     # 强制将根目录那个带 3D 特效的 index.html 设为首页
@@ -100,7 +104,9 @@ def serve_video(filename):
 @app.route('/api/videos', methods=['GET'])
 def api_videos():
     """获取视频列表"""
-    return jsonify(recommender.get_all_videos())
+    limit = int(request.args.get('limit', 50))
+    randomize = request.args.get('random', '0') == '1'
+    return jsonify(recommender.get_all_videos(limit=limit, randomize=randomize))
 
 @app.route('/api/video/<int:video_id>', methods=['GET'])
 def api_video(video_id):
@@ -123,8 +129,9 @@ def api_recommend():
         return jsonify({"error": "Missing history"}), 400
         
     history = data['history']
-    recommendations = recommender.recommend(history)
-    
+    top_n = data.get('top_n', 10)  # 默认多给一些方便前台自适应
+    recommendations = recommender.recommend(history, top_n=top_n)
+
     return jsonify({
         "recommendations": recommendations
     })

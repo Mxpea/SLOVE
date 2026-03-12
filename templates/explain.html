@@ -1,14 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>技术文档 - 推荐系统 Demo</title>
+    <link rel="icon" type="image/png" href="/icon.png" />
     <link rel="stylesheet" href="/static/style.css">
     <!-- 引入 marked.js 解析 Markdown -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <!-- 引入 MathJax 用于数学公式渲染 -->
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
         .header-nav {
@@ -305,6 +314,79 @@
     </div>
 
     <script>
+        // 自定义 marked.js 渲染器，拦截代码块以提取显示代码语言/标题
+        const renderer = {
+            code(codeObj, inlineLang, inlineEscaped) {
+                // 兼容不同版本的 marked (新版本传对象，老版本传参数)
+                let code = typeof codeObj === 'object' ? codeObj.text : codeObj;
+                let lang = typeof codeObj === 'object' ? codeObj.lang : inlineLang;
+
+                let languageLabel = '';
+                if (lang) {
+                    languageLabel = `<div class="code-header" style="background: rgba(0, 246, 255, 0.2); color: #00f6ff; padding: 5px 15px; font-family: 'Orbitron', monospace; font-size: 0.9em; font-weight: bold; border-top-left-radius: 4px; border-top-right-radius: 4px; border: 1px solid rgba(0, 246, 255, 0.3); border-bottom: none; display: inline-block;">${lang}</div><div style="clear: both;"></div>`;
+                }
+
+                const escapedCode = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+                const linesCount = code.split('\n').length;
+                const isLong = linesCount > 10;
+                
+                let html = `<div class="custom-code-block" style="margin-bottom: 20px;">` + 
+                           languageLabel + 
+                           `<div class="code-collapse-wrapper" style="position: relative;">` +
+                           `<pre class="code-collapse-pre ${isLong ? 'collapsed' : ''}" style="margin-top: 0; border-top-left-radius: ${lang ? '0' : '4px'}; border: 1px solid rgba(0, 246, 255, 0.3); border-radius: 4px; ${lang ? 'border-top-left-radius: 0;' : ''} ${isLong ? 'border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none; transition: max-height 0.4s ease-out; max-height: 280px; overflow-y: hidden;' : ''} padding: 15px; overflow-x: auto; background: rgba(5, 3, 10, 0.6); box-shadow: inset 0 0 10px rgba(0,0,0,0.8); margin-bottom: 0;"><code style="color: #e0e0e0; font-family: Consolas, monospace; line-height: 1.5;" class="${lang ? 'language-' + lang : ''}">${escapedCode}</code></pre>`;
+                
+                if (isLong) {
+                    // 使用底部的暗色遮罩层形成渐变消失的视觉效果，bottom 设为 8px 以避开悬浮在这个高度底部的水平滚动条
+                    html += `<div class="code-fade-out" style="position: absolute; bottom: 8px; left: 0; right: 0; height: 60px; background: linear-gradient(transparent, rgba(6,4,13,0.95)); pointer-events: none;"></div>`;
+                }
+                html += `</div>`;
+                
+                if (isLong) {
+                    html += `<button class="code-toggle-btn" data-lines="${linesCount}" onclick="window.toggleCodeBlock(this)" onmouseover="this.style.background='rgba(0,246,255,0.2)'" onmouseout="this.style.background='rgba(0,246,255,0.05)'" style="display: block; width: 100%; padding: 8px; background: rgba(0,246,255,0.05); border: 1px solid rgba(0,246,255,0.3); color: #00f6ff; cursor: pointer; border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; font-family: monospace; font-size: 0.9em; transition: background 0.3s; text-align: center; margin-top: 0;">▼ 展开余下代码 (${linesCount} 行)</button>`;
+                }
+                html += `</div>`;
+
+                return html;
+            }
+        };
+        marked.use({ renderer });
+
+        window.toggleCodeBlock = function(btn) {
+            const wrapper = btn.previousElementSibling;
+            const pre = wrapper.querySelector('.code-collapse-pre');
+            const fadeOut = wrapper.querySelector('.code-fade-out');
+            
+            if (pre.classList.contains('collapsed')) {
+                // 展开动画
+                pre.style.maxHeight = pre.scrollHeight + "px";
+                pre.classList.remove('collapsed');
+                if (fadeOut) fadeOut.style.display = 'none';
+                btn.innerHTML = '▲ 收起代码';
+                
+                // 动画结束后解除最大高度限制，防止后续窗口改变（如缩放）影响内部布局
+                setTimeout(() => {
+                    if (!pre.classList.contains('collapsed')) {
+                        pre.style.maxHeight = 'none';
+                    }
+                }, 400);
+            } else {
+                // 折叠动画
+                // 先把 max-height 设为具体像素像素才能触发过度动画
+                pre.style.maxHeight = pre.scrollHeight + "px";
+                
+                // 强制重绘，应用初始状态
+                pre.offsetHeight; 
+                
+                // 执行折叠目标状态
+                pre.style.maxHeight = "280px";
+                pre.classList.add('collapsed');
+                if (fadeOut) fadeOut.style.display = 'block';
+                const linesCount = btn.getAttribute('data-lines');
+                btn.innerHTML = `▼ 展开余下代码 (${linesCount} 行)`;
+            }
+        };
+
         document.addEventListener("DOMContentLoaded", () => {
             fetchDocsTree();
             

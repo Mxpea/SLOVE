@@ -43,10 +43,10 @@ class VideoRecommender:
         # 获取特征词汇表映射 (索引 -> 词语)
         self.feature_names = self.vectorizer.get_feature_names_out()
 
-    def get_all_videos(self, limit=50):
-        """返回所有视频信息"""
-        # 防止你的 videos.csv 数据量太大(上万条)时瞬间传给前端导致浏览器直接卡死崩溃
-        # 我们在这里做了一个截断，列表页随机(或按顺序)展示 50 条用于演示即可
+    def get_all_videos(self, limit=50, randomize=False):
+        """返回视频信息（可随机）"""
+        if randomize:
+            return self.df[['video_id', 'title', 'tags']].sample(n=min(limit, len(self.df))).to_dict(orient='records')
         return self.df[['video_id', 'title', 'tags']].head(limit).to_dict(orient='records')
 
     def get_video(self, video_id):

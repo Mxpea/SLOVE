@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>S.L.O.V.E - 视频广场</title>
+    <link rel="icon" type="image/png" href="/icon.png" />
     <link rel="stylesheet" href="/static/style.css">
     <style>
         .section-title {
@@ -54,7 +55,11 @@
         </div>
         <p id="no-history-msg" style="color:rgba(0, 246, 255, 0.5); font-style:italic; font-family: monospace;">当前暂无观看历史，请先浏览以下视频获取推荐。</p>
 
-        <h2 class="section-title">> 全部视频</h2>
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 40px;">
+            <h2 class="section-title" style="margin-top: 0; border-bottom: none; margin-bottom: 0;">> 全部视频</h2>
+            <button id="refresh-videos-btn" style="background: rgba(0, 246, 255, 0.1); border: 1px solid #00f6ff; color: #00f6ff; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-family: 'Orbitron', monospace; transition: all 0.3s; margin-left: 20px;">换一批</button>
+        </div>
+        <div style="border-bottom: 1px solid rgba(0, 246, 255, 0.2); margin-bottom: 15px; width: 100%;"></div>
         <div id="video-list" class="video-grid">
             <!-- 视频列表将由 JS 动态生成 -->
             <p style="font-family: monospace; color: #ff2bd6; animation: pulse 1.5s infinite;">正在加载数据...</p>
@@ -120,16 +125,18 @@
                             data.user.keywords.forEach(kw => {
                                 tip += `${kw.word}: ${(kw.weight).toFixed(4)}<br/>`;
                             });
-                            return tip;
+                            return `<div style="max-width: 300px; white-space: normal; word-wrap: break-word;">${tip}</div>`;
                         }
                         const val = param.data.value;
                         const tIdx = is3D ? 3 : 2;
                         const tagsIdx = is3D ? 4 : 3;
                         const simIdx = is3D ? 5 : 4;
                         return `
-                            <strong style="color:#00f6ff">${val[tIdx]}</strong><br/>
-                            <span style="color:rgba(255,255,255,0.6)">标签: ${val[tagsIdx]}</span><br/>
-                            ${val[simIdx] > 0 ? `<span style="color:#ff2bd6">匹配度: ${(val[simIdx]*100).toFixed(1)}%</span>` : ''}
+                            <div style="max-width: 300px; white-space: normal; word-wrap: break-word; line-height: 1.5;">
+                                <strong style="color:#00f6ff">${val[tIdx]}</strong><br/>
+                                <span style="color:rgba(255,255,255,0.6)">标签: ${val[tagsIdx]}</span><br/>
+                                ${val[simIdx] > 0 ? `<span style="color:#ff2bd6">匹配度: ${(val[simIdx]*100).toFixed(1)}%</span>` : ''}
+                            </div>
                         `;
                     };
 
@@ -139,7 +146,9 @@
                             backgroundColor: 'rgba(5, 3, 10, 0.9)',
                             borderColor: '#00f6ff',
                             textStyle: { color: '#fff' },
-                            formatter: tooltipFormatter
+                            extraCssText: 'box-shadow: 0 0 15px rgba(0,246,255,0.2); max-width: 320px; white-space: normal; word-wrap: break-word;',
+                            formatter: tooltipFormatter,
+                            confine: true // 限制在图表的区域内
                         }
                     };
 
@@ -206,33 +215,52 @@
                 document.getElementById('viz-loading').innerText = '模型降维失败或数据不存在';
             });
 
-            // 1. 获取所有视频
-            fetch('/api/videos')
-                .then(res => res.json())
-                .then(videos => {
-                    const listEl = document.getElementById('video-list');       
-                    listEl.innerHTML = '';
-                    videos.forEach(v => {
-                        const card = document.createElement('div');
-                        card.className = 'video-card';
-                        card.onclick = () => window.location.href = `/video/${v.video_id}`;
-                        card.innerHTML = `
-                            <h3>${v.title}</h3>
-                            <div class="tags">${v.tags}</div>
-                        `;
-                        listEl.appendChild(card);
+            // 动态计算适合当前屏幕宽度的列数
+            function getGridColumnCount() {
+                const containerWidth = document.querySelector('.container').clientWidth;
+                let columns = Math.floor((containerWidth + 25) / 305);
+                return Math.max(columns, 1);
+            }
+
+            // 1. 获取所有视频（带有随机和适应行数的功能）
+            function fetchRandomVideos() {
+                const cols = getGridColumnCount();
+                const limit = cols * 4; // 全部视频默认给4行
+                const listEl = document.getElementById('video-list');
+                listEl.innerHTML = '<p style="font-family: monospace; color: #00f6ff; animation: pulse 1.5s infinite;">加载中...</p>';
+                
+                fetch(`/api/videos?random=1&limit=${limit}`)
+                    .then(res => res.json())
+                    .then(videos => {
+                        listEl.innerHTML = '';
+                        videos.forEach(v => {
+                            const card = document.createElement('div');
+                            card.className = 'video-card';
+                            card.onclick = () => window.location.href = `/video/${v.video_id}`;
+                            card.innerHTML = `
+                                <h3>${v.title}</h3>
+                                <div class="tags">${v.tags}</div>
+                            `;
+                            listEl.appendChild(card);
+                        });
                     });
-                });
+            }
+
+            fetchRandomVideos();
+            document.getElementById('refresh-videos-btn').addEventListener('click', fetchRandomVideos);
 
             // 2. 根据本地历史获取个性化推荐
             if (history.length > 0) {
                 document.getElementById('no-history-msg').style.display = 'none';
                 document.getElementById('recommendations-container').style.display = 'grid';
                 
+                const recCols = getGridColumnCount();
+                const recLimit = recCols * 2; // 推荐显示精确的两行，不留空
+                
                 fetch('/api/recommend', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ history: history })
+                    body: JSON.stringify({ history: history, top_n: recLimit })
                 })
                 .then(res => res.json())
                 .then(data => {
