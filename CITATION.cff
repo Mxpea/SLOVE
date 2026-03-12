@@ -1,7 +1,6 @@
 cff-version: 1.2.0
-message: |
-  If you use the MicroLens dataset, please cite the following paper:
-  若您使用MicroLens数据集，请引用以下论文：
+message: "If you use the MicroLens dataset, please cite the following paper."
+type: article
 authors:
   - family-names: Ni
     given-names: Yongxin
@@ -15,10 +14,9 @@ authors:
     given-names: Youhua
   - family-names: He
     given-names: Xiangnan
-title: A Content-Driven Micro-Video Recommendation Dataset at Scale
-type: article
+title: "A Content-Driven Micro-Video Recommendation Dataset at Scale"
 year: 2023
-journal: arXiv preprint
+journal: "arXiv preprint"
 eprint: "2309.15379"
 eprint-type: arXiv
-eprint-url: https://arxiv.org/abs/2309.15379
+eprint-url: "https://arxiv.org/abs/2309.15379"
