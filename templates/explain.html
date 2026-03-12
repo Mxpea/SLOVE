@@ -3,57 +3,413 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>推荐原理解释 - 推荐系统 Demo</title>
+    <title>技术文档 - 推荐系统 Demo</title>
     <link rel="stylesheet" href="/static/style.css">
+    <!-- 引入 marked.js 解析 Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <!-- 引入 MathJax 用于数学公式渲染 -->
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        .header-nav {
+            background: linear-gradient(180deg, rgba(5,3,10,0.9) 0%, rgba(5,3,10,0.2) 100%);
+            border-bottom: 1px solid rgba(0, 246, 255, 0.15);
+            backdrop-filter: blur(8px);
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-nav h2 { 
+            margin: 0; 
+            font-size: 1.2rem; 
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 10px rgba(0, 246, 255, 0.8);
+            letter-spacing: 2px;
+        }
+        .header-links { display: flex; gap: 20px; align-items: center; }
+        .header-links a { 
+            color: rgba(255, 255, 255, 0.8); 
+            text-decoration: none; 
+            font-size: 14px; 
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+        .header-links a:hover {
+            color: #00f6ff;
+            text-shadow: 0 0 8px rgba(0, 246, 255, 0.6);
+        }
+        
+        /* 侧边栏按钮 */
+        .sidebar-toggle {
+            background: rgba(0, 246, 255, 0.1);
+            color: #00f6ff;
+            border: 1px solid rgba(0, 246, 255, 0.4);
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 2px;
+            font-size: 14px;
+            font-family: 'Space Grotesk', sans-serif;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .sidebar-toggle:hover {
+            background: rgba(0, 246, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 246, 255, 0.4);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            border-radius: 4px;
+        }
+
+        .docs-layout {
+            display: flex;
+            min-height: calc(100vh - 80px);
+            margin-top: 20px;
+            transition: all 0.3s ease;
+        }
+
+        /* 侧边栏样式 */
+        .docs-sidebar {
+            width: 280px;
+            background: rgba(10, 13, 24, 0.6);
+            border-right: 1px solid rgba(0, 246, 255, 0.2);
+            padding: 20px;
+            overflow-y: auto;
+            backdrop-filter: blur(4px);
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+        .docs-sidebar.collapsed {
+            width: 0;
+            padding: 0;
+            border-right: none;
+            overflow: hidden;
+            opacity: 0;
+        }
+
+        .docs-content {
+            flex: 1;
+            background: rgba(10, 13, 24, 0.4);
+            border: 1px solid rgba(0, 246, 255, 0.1);
+            border-left: none;
+            padding: 40px;
+            overflow-y: auto;
+            min-width: 0; 
+            backdrop-filter: blur(4px);
+        }
+        
+        .docs-sidebar ul {
+            list-style-type: none;
+            padding-left: 15px;
+        }
+        .docs-sidebar > ul {
+            padding-left: 0;
+        }
+        .docs-sidebar li {
+            margin: 8px 0;
+        }
+        .docs-sidebar a {
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            display: block;
+            padding: 6px 10px;
+            border-radius: 2px;
+            transition: all 0.2s;
+            font-size: 0.95em;
+        }
+        .docs-sidebar a:hover {
+            background: rgba(0, 246, 255, 0.1);
+            color: #00f6ff;
+            border-left: 2px solid #00f6ff;
+        }
+        .docs-sidebar a.active {
+            background: rgba(255, 43, 214, 0.15);
+            color: #ff2bd6;
+            border-left: 2px solid #ff2bd6;
+            text-shadow: 0 0 5px rgba(255, 43, 214, 0.5);
+        }
+
+        /* 文件夹折叠样式 */
+        .docs-dir-title {
+            font-weight: bold;
+            color: #00f6ff;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            padding: 4px 6px;
+            border-radius: 2px;
+            transition: background 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .docs-dir-title:hover {
+            background: rgba(0, 246, 255, 0.1);
+        }
+        .docs-dir-title::before {
+            content: "▼";
+            font-size: 0.8em;
+            margin-right: 6px;
+            color: #ff2bd6;
+            transition: transform 0.2s ease;
+        }
+        .docs-dir-title.collapsed::before {
+            transform: rotate(-90deg);
+        }
+        .folder-content {
+            transition: all 0.3s ease;
+            overflow: hidden;
+            display: block;
+        }
+        .folder-content.hidden {
+            display: none;
+        }
+
+        /* Markdown 渲染样式微调 (暗黑科技风) */
+        .markdown-body {
+            color: #e0e6ed;
+            font-family: inherit;
+        }
+        .markdown-body img { max-width: 100%; height: auto; border: 1px solid rgba(0, 246, 255, 0.3); }
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 { 
+            color: #00f6ff; 
+            border-bottom: 1px solid rgba(0, 246, 255, 0.2);
+            padding-bottom: 8px;
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 8px rgba(0, 246, 255, 0.3);
+        }
+        .markdown-body strong {
+            color: #ff2bd6;
+        }
+        .markdown-body code {
+            background: rgba(255, 43, 214, 0.1);
+            padding: 2px 5px;
+            border-radius: 2px;
+            color: #ff2bd6;
+            font-family: monospace;
+            border: 1px solid rgba(255, 43, 214, 0.3);
+        }
+        .markdown-body pre code { 
+            background: transparent; 
+            border: none;
+            color: #00f6ff; 
+        }
+        .markdown-body pre {
+            background: rgba(0, 0, 0, 0.5);
+            color: #00f6ff;
+            padding: 15px;
+            border-radius: 2px;
+            overflow-x: auto;
+            font-size: 0.9em;
+            border-left: 3px solid #ff2bd6;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+        }
+        .markdown-body a {
+            color: #ff2bd6;
+            text-decoration: none;
+        }
+        .markdown-body a:hover {
+            text-decoration: underline;
+            text-shadow: 0 0 5px rgba(255, 43, 214, 0.5);
+        }
+        
+        .loading-text {
+            color: #00f6ff;
+            font-family: 'Orbitron', sans-serif;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; text-shadow: 0 0 10px #00f6ff; }
+            100% { opacity: 0.5; }
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .header-nav {
+                padding: 15px 20px;
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+            .header-links {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .container {
+                margin: 0;
+            }
+            .docs-layout {
+                flex-direction: column;
+                margin-top: 0;
+                min-height: calc(100vh - 120px);
+            }
+            .docs-sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid rgba(0, 246, 255, 0.2);
+                max-height: 40vh;
+                padding: 15px;
+            }
+            .docs-sidebar.collapsed {
+                height: 0;
+                max-height: 0;
+                padding: 0;
+                border-bottom: none;
+                width: 100%;
+                opacity: 0;
+            }
+            .docs-content {
+                padding: 20px;
+                border: none;
+            }
+        }
+    </style>
 </head>
 <body>
-    <header>
+    <header class="header-nav">
         <div>
-            <h2>短视频推荐系统 Demo</h2>
+            <h2>技术文档</h2>
         </div>
-        <nav>
-            <a href="/">返回主页</a>
-            <a href="/demo">视频列表</a>
+        <nav class="header-links">
+            <button class="sidebar-toggle" onclick="toggleSidebar()">
+                <span>[=]</span> 目录
+            </button>
+            <a href="/">首页</a>
+            <a href="/demo">视频广场</a>
         </nav>
     </header>
 
-    <div class="container explain-container" style="background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-        <h1 style="color: #2980b9;">基于高等数学的推荐系统原理</h1>
-        
-        <p>本 Demo 为了保护用户隐私，<strong>不会在服务器存储任何用户数据</strong>。所有的观看历史仅保存在浏览器本地的 <code>LocalStorage</code> 中。</p>
-        <p>当请求推荐时，客户端将历史列表发送给系统，系统动态执行以下四个步骤进行计算：</p>
-
-        <h3>1. 词频-逆文档频率 (TF-IDF)</h3>
-        <p>我们将视频的标题（Title）和标签（Tags）合并成一段文本，并通过 TF-IDF（Term Frequency-Inverse Document Frequency）技术将其转换为高维空间中的数学矩阵。</p>
-        <p>公式表示为：</p>
-        <div class="math-formula">
-            $$ \text{TF-IDF}(t, d, D) = \text{TF}(t, d) \times \text{IDF}(t, D) $$
-        </div>
-        <p>其中 $t$ 是词汇，$d$ 是某一个视频文本，$D$ 是所有视频的语料库。经过此步骤，每个视频 $V_i$ 都变成了特征空间中的一个固定维度的向量（Vector）。</p>
-
-        <h3>2. 生成用户兴趣向量 (Vector Averaging)</h3>
-        <p>我们在获取到用户观看过的历史视频列表后，怎么表示“用户当前的兴趣”呢？我们可以简单地将其看作是其观看过的视频向量中心的平均点（质心）。</p>
-        <p>数学表达如下（假设用户看过的视频为 $V_1, V_2, \dots, V_n$）：</p>
-        <div class="math-formula">
-            $$ U = \frac{1}{n} \sum_{i=1}^{n} V_i $$
-        </div>
-        <p>其中 $U$ 即代表了当前用户的**兴趣向量**。</p>
-
-        <h3>3. 余弦相似度计算 (Cosine Similarity)</h3>
-        <p>有了用户兴趣向量 $U$ 以及所有视频候选库向量 $V_j$，我们在高维空间中计算 $U$ 和 $V_j$ 之间夹角 $\theta$ 的余弦值。余弦值越接近于 1，说明两个向量的方向越一致（即内容越相似）。</p>
-        <div class="math-formula">
-            $$ \text{Similarity}(U, V_j) = \cos(\theta) = \frac{U \cdot V_j}{\|U\| \|V_j\|} $$
-        </div>
-
-        <h3>4. 排序与截断 (Top-N)</h3>
-        <p>最后，系统会将计算得出的相似度从大到小进行排序，并且会主动剔除掉那些用户已经观看过的视频。保留排名前 $N$ (比如 Top 5) 的视频，作为最终推荐结果返回给前端进行展示。</p>
-        
-        <div style="margin-top: 40px; text-align: center;">
-            <button onclick="window.location.href='/'" style="padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">返回首页体验</button>
+    <div class="container">
+        <div class="docs-layout">
+            <aside class="docs-sidebar" id="sidebar">
+                <div class="loading-text">正在加载目录...</div>
+            </aside>
+            <main class="docs-content markdown-body" id="content">
+                <h1 style="color: #00f6ff;">欢迎使用</h1>
+                <p>请选择左侧栏的文档进行阅读。</p>
+            </main>
         </div>
     </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            fetchDocsTree();
+            
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.add('collapsed');
+            }
+        });
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+        }
+
+        function toggleFolder(el) {
+            el.classList.toggle('collapsed');
+            const ul = el.nextElementSibling;
+            if (ul && ul.classList.contains('folder-content')) {
+                ul.classList.toggle('hidden');
+            }
+        }
+
+        async function fetchDocsTree() {
+            try {
+                const res = await fetch('/api/docs/tree');
+                const tree = await res.json();
+                const sidebar = document.getElementById('sidebar');
+                sidebar.innerHTML = renderTree(tree);
+                
+                const firstFile = findFirstFile(tree);
+                if (firstFile) {
+                    loadDoc(firstFile.path);
+                }
+            } catch (err) {
+                console.error("加载文档树失败", err);
+                document.getElementById('sidebar').innerHTML = '<div style="color:#ff2bd6; padding: 20px; font-family: monospace;">[错误] 找不到文档数据</div>';
+            }
+        }
+
+        function renderTree(nodes) {
+            if (!nodes || nodes.length === 0) return '';
+            let html = '<ul class="folder-content">';
+            for (const node of nodes) {
+                if (node.type === 'dir') {
+                    html += `
+                        <li>
+                            <div class="docs-dir-title" onclick="toggleFolder(this)">> ${node.name}</div>
+                            ${renderTree(node.children)}
+                        </li>
+                    `;
+                } else if (node.type === 'file') {
+                    const safePath = encodeURIComponent(node.path);
+                    html += `
+                        <li>
+                            <a data-path="${node.path}" onclick="loadDoc('${safePath}')">_ ${node.name}</a>
+                        </li>
+                    `;
+                }
+            }
+            html += '</ul>';
+            return html;
+        }
+
+        function findFirstFile(nodes) {
+            for (const node of nodes) {
+                if (node.type === 'file') return node;
+                if (node.type === 'dir') {
+                    const found = findFirstFile(node.children);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        async function loadDoc(encodedPath) {
+            const path = decodeURIComponent(encodedPath);
+            
+            document.querySelectorAll('.docs-sidebar a').forEach(a => a.classList.remove('active'));
+            const safeSelector = path.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+            const activeLink = document.querySelector('.docs-sidebar a[data-path="' + safeSelector + '"]');
+            if (activeLink) activeLink.classList.add('active');
+
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.add('collapsed');
+            }
+
+            try {
+                document.getElementById('content').innerHTML = '<div class="loading-text">正在加载文档内容...</div>';
+                const res = await fetch('/api/docs/content/' + encodedPath);
+                if (res.status === 404) {
+                    document.getElementById('content').innerHTML = '<h2 style="color:#ff2bd6;">[404] 找不到该文档</h2>';
+                    return;
+                }
+                const data = await res.json();
+
+                const htmlContent = marked.parse(data.content);
+                document.getElementById('content').innerHTML = htmlContent;
+
+                if (window.MathJax) {
+                    MathJax.typesetPromise([document.getElementById('content')]).catch((err) => console.log(err.message));
+                }
+            } catch (err) {
+                console.error("加载文档内容失败", err);
+                document.getElementById('content').innerHTML = '<h2 style="color:#ff2bd6;">[错误] 文档加载失败</h2>';
+            }
+        }
+    </script>
 </body>
 </html>

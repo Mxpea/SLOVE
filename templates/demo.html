@@ -3,45 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 推荐系统 Demo - 首页</title>
+    <title>S.L.O.V.E - 视频广场</title>
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .section-title {
+            color: #00f6ff;
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 1px solid rgba(0, 246, 255, 0.2);
+            padding-bottom: 10px;
+            text-shadow: 0 0 10px rgba(0, 246, 255, 0.4);
+            margin-top: 40px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 </head>
 <body>
     <header>
         <div>
-            <h2>短视频推荐系统 Demo</h2>
-            <small>基于 TF-IDF 与余弦相似度</small>
+            <h2>视频推荐广场</h2>
+            <small style="color: #ff2bd6; font-family: monospace; letter-spacing: 1px;">[基于 TF-IDF & 余弦相似度]</small>
         </div>
         <nav>
-            <a href="/">返回主页</a>
-            <a href="/demo">视频列表</a>
-            <a href="/explain">推荐原理</a>
+            <a href="/">首页</a>
+            <a href="/demo">视频广场</a>
+            <a href="/explain">技术文档</a>
             <a href="#" onclick="clearHistory(); return false;">清空观看历史</a>
         </nav>
     </header>
 
+    
     <div class="container">
-        <h2>为你推荐 (基于你的观看历史)</h2>
+        <h2 class="section-title">> 向量空间分布模型 <span style="font-size: 0.5em; color: rgba(255,255,255,0.5);">[2D PCA Projection]</span></h2>
+        <div id="vector-viz" style="width: 100%; height: 450px; background: rgba(5,3,10,0.6); border: 1px solid rgba(0,246,255,0.2); border-radius: 4px; box-shadow: 0 0 15px rgba(0,246,255,0.1); margin-bottom: 40px; position: relative;">
+            <div id="viz-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #00f6ff; font-family: monospace; animation: pulse 1.5s infinite;">
+                模型数据降维中 (LOADING PCA)...
+            </div>
+        </div>
+
+        <h2 class="section-title">> 为您推荐 <span style="font-size: 0.5em; color: rgba(255,255,255,0.5);">[基于观看历史]</span></h2>
         <div id="recommendations-container" class="video-grid" style="margin-bottom: 40px; display: none;">
             <!-- 推荐视频会在这里加载 -->
         </div>
-        <p id="no-history-msg" style="color:#7f8c8d; font-style:italic;">暂无观看历史，先随便看几个视频吧。</p>
+        <p id="no-history-msg" style="color:rgba(0, 246, 255, 0.5); font-style:italic; font-family: monospace;">当前暂无观看历史，请先浏览以下视频获取推荐。</p>
 
-        <h2>全部视频列表</h2>
+        <h2 class="section-title">> 全部视频</h2>
         <div id="video-list" class="video-grid">
             <!-- 视频列表将由 JS 动态生成 -->
-            <p>加载视频中...</p>
+            <p style="font-family: monospace; color: #ff2bd6; animation: pulse 1.5s infinite;">正在加载数据...</p>
         </div>
     </div>
 
     <script src="/static/main.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const history = getHistory();
+            
+            // 3. 渲染数据可视化
+            fetch('/api/visualize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ history: history })
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('viz-loading').style.display = 'none';
+                const chart = echarts.init(document.getElementById('vector-viz'));
+                
+                const seriesData = [{
+                    name: '全部视频',
+                    type: 'scatter',
+                    symbolSize: function(val) {
+                        return val[4] > 0.1 ? 16 : 8; // If similar, larger symbol
+                    },
+                    itemStyle: {
+                        color: 'rgba(0, 246, 255, 0.6)',
+                        shadowBlur: 10,
+                        shadowColor: '#00f6ff'
+                    },
+                    data: data.videos.map(v => ({
+                        value: [v.x, v.y, v.title, v.tags, v.similarity || 0, v.video_id],
+                        itemStyle: {
+                            color: v.similarity && v.similarity > 0.1 ? 'rgba(255, 43, 214, 0.8)' : 'rgba(0, 246, 255, 0.6)',
+                            shadowColor: v.similarity && v.similarity > 0.1 ? '#ff2bd6' : '#00f6ff'
+                        }
+                    }))
+                }];
+
+                if (data.user) {
+                    seriesData.push({
+                        name: '用户特征坐标',
+                        type: 'scatter',
+                        symbolSize: 24,
+                        itemStyle: {
+                            color: '#ff2bd6',
+                            shadowBlur: 20,
+                            shadowColor: '#ff2bd6',
+                            borderColor: '#fff',
+                            borderWidth: 2
+                        },
+                        data: [{
+                            value: [data.user.x, data.user.y, 'User Vector']
+                        }]
+                    });
+                }
+
+                const option = {
+                    backgroundColor: 'transparent',
+                    tooltip: {
+                        backgroundColor: 'rgba(5, 3, 10, 0.9)',
+                        borderColor: '#00f6ff',
+                        textStyle: { color: '#fff' },
+                        formatter: function (param) {
+                            if (param.seriesName === '用户特征坐标') {
+                                let tip = '<strong style="color:#ff2bd6;">[ 用户特征雷达 (User Vector) ]</strong><br/>';
+                                data.user.keywords.forEach(kw => {
+                                    tip += `${kw.word}: ${(kw.weight).toFixed(4)}<br/>`;
+                                });
+                                return tip;
+                            }
+                            const val = param.data.value;
+                            return `
+                                <strong style="color:#00f6ff">${val[2]}</strong><br/>
+                                <span style="color:rgba(255,255,255,0.6)">标签: ${val[3]}</span><br/>
+                                ${val[4] > 0 ? `<span style="color:#ff2bd6">匹配度: ${(val[4]*100).toFixed(1)}%</span>` : ''}
+                            `;
+                        }
+                    },
+                    grid: {
+                        left: '2%', right: '2%', top: '5%', bottom: '5%'
+                    },
+                    xAxis: {
+                        type: 'value',
+                        splitLine: { lineStyle: { color: 'rgba(0, 246, 255, 0.1)', type: 'dashed' } },
+                        axisLabel: { show: false }
+                    },
+                    yAxis: {
+                        type: 'value',
+                        splitLine: { lineStyle: { color: 'rgba(0, 246, 255, 0.1)', type: 'dashed' } },
+                        axisLabel: { show: false }
+                    },
+                    series: seriesData
+                };
+
+                chart.setOption(option);
+                
+                chart.on('click', function(params) {
+                    if (params.seriesName === '全部视频') {
+                        window.location.href = `/video/${params.data.value[5]}`;
+                    }
+                });
+
+                let resizeTimer;
+                window.addEventListener('resize', () => {
+                    clearTimeout(resizeTimer);
+                    resizeTimer = setTimeout(() => {
+                        chart.resize();
+                    }, 200);
+                });
+            })
+            .catch(err => {
+                document.getElementById('viz-loading').innerText = '模型降维失败或数据不存在';
+            });
+
             // 1. 获取所有视频
             fetch('/api/videos')
                 .then(res => res.json())
                 .then(videos => {
-                    const listEl = document.getElementById('video-list');
+                    const listEl = document.getElementById('video-list');       
                     listEl.innerHTML = '';
                     videos.forEach(v => {
                         const card = document.createElement('div');
@@ -56,7 +186,6 @@
                 });
 
             // 2. 根据本地历史获取个性化推荐
-            const history = getHistory();
             if (history.length > 0) {
                 document.getElementById('no-history-msg').style.display = 'none';
                 document.getElementById('recommendations-container').style.display = 'grid';
@@ -76,13 +205,14 @@
                             card.className = 'video-card';
                             card.onclick = () => window.location.href = `/video/${r.video_id}`;
                             card.innerHTML = `
-                                <h3>${r.title} <span class="score-badge">相似度: ${(r.score * 100).toFixed(1)}%</span></h3>
+                                <h3>${r.title}</span></h3>
+                                <div class="score-badge" style="float:none; display:inline-block; margin-top:5px; background:rgba(255,43,214,0.1); border:1px solid rgba(255,43,214,0.3); color:#ff2bd6; border-radius:2px; padding:2px 6px;">推荐相似度: ${(r.score * 100).toFixed(1)}%</div><br>
                                 <div class="tags">${r.tags}</div>
                             `;
                             recContainer.appendChild(card);
                         });
                     } else {
-                        recContainer.innerHTML = '<p>没有足够的推荐数据。</p>';
+                        recContainer.innerHTML = '<p style="font-family: monospace; color: #ff2bd6;">暂无推荐内容，请尝试点击上方视频获取更多推荐。</p>'; 
                     }
                 });
             }

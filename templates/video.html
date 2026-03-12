@@ -3,35 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>播放视频 - 推荐系统 Demo</title>
+    <title>视频播放 - 基于内容的推荐系统</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body data-video-id="{{ video_id }}">
-    <header>
+    <header class="header-nav">
         <div>
-            <h2>短视频推荐系统 Demo</h2>
+            <h2>视频播放</h2>
         </div>
-        <nav>
-            <a href="/">返回主页</a>
-            <a href="/demo">视频列表</a>
-            <a href="/explain">推荐原理</a>
+        <nav class="header-links">
+            <a href="/">首页</a>
+            <a href="/demo">视频广场</a>
+            <a href="/explain">技术文档</a>
         </nav>
     </header>
 
     <div class="container play-layout">
         <div class="main-content">
             <!-- 使用真实的 HTML5 video 标签，动态加载对应的 mp4 文件 -->
-            <video id="video-player" class="video-player-mock" controls autoplay style="background-color: #000; width: 100%;">
+            <video id="video-player" class="video-player-mock" controls autoplay style="background-color: #000; width: 100%; border-radius: 4px; box-shadow: 0 0 15px rgba(0, 246, 255, 0.2);">
                 您的浏览器不支持视频播放。
             </video>
-            <h2 id="video-title">...</h2>
-            <p><strong>标签 / Tags: </strong> <span id="video-tags" class="tags"></span></p>
+            <h2 id="video-title" style="color: #00f6ff; font-family: 'Orbitron', sans-serif; text-shadow: 0 0 10px rgba(0,246,255,0.4);">...</h2>
+            <p style="color: rgba(255,255,255,0.7);"><strong style="color: #ff2bd6;">> 视频标签: </strong> <span id="video-tags" class="tags"></span></p>
         </div>
         
         <div class="sidebar">
-            <h3>猜你喜欢</h3>
+            <h3>> 相似视频推荐</h3>
             <div id="recommendations-list">
-                <p>加载推荐中...</p>
+                <p style="font-family: monospace; color: #ff2bd6;">正在加载推荐...</p>
             </div>
         </div>
     </div>
@@ -39,8 +39,7 @@
     <script src="/static/main.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // 安全地从 HTML 属性中获取 Jinja 渲染的变量
-            const currentVideoId = parseInt(document.body.dataset.videoId, 10);
+            const currentVideoId = parseInt(document.body.dataset.videoId, 10); 
 
             // 记录到本地浏览历史中
             addVideoToHistory(currentVideoId);
@@ -49,15 +48,14 @@
             fetch(`/api/video/${currentVideoId}`)
                 .then(res => res.json())
                 .then(data => {
-                    // 设置视频源 (指向我们新增的Flask静态文件路由)
                     const videoPlayer = document.getElementById('video-player');
-                    videoPlayer.src = `/videodataset/${currentVideoId}.mp4`;
+                    videoPlayer.src = `/videodataset/${currentVideoId}.mp4`;    
 
                     document.getElementById('video-title').innerText = data.title;
                     document.getElementById('video-tags').innerText = data.tags;
                 });
 
-            // 获取推荐列表 (基于当前记录的完整历史)
+            // 获取推荐列表
             const history = getHistory();
             fetch('/api/recommend', {
                 method: 'POST',
@@ -74,13 +72,13 @@
                         item.className = 'rec-item';
                         item.onclick = () => window.location.href = `/video/${r.video_id}`;
                         item.innerHTML = `
-                            <h4>${r.title} <span class="score-badge">${(r.score).toFixed(2)}</span></h4>
+                            <h4 class="rec-item-title">${r.title} <span class="score-badge">相似度: ${(r.score).toFixed(2)}</span></h4>
                             <p>${r.tags}</p>
                         `;
                         recList.appendChild(item);
                     });
                 } else {
-                    recList.innerHTML = '<p>暂时没有更多推荐。</p>';
+                    recList.innerHTML = '<p style="color:rgba(0,246,255,0.5); font-family:monospace;">暂无足够数据生成推荐。</p>';
                 }
             });
         });

@@ -39,6 +39,57 @@ def video(video_id):
 def explain():
     return render_template('explain.html')
 
+# --- 文档站 API ---
+def get_docs_tree(dir_path, base_path=""):
+    tree = []
+    if not os.path.exists(dir_path):
+        return tree
+    
+    entries = sorted(os.listdir(dir_path))
+    for entry in entries:
+        full_path = os.path.join(dir_path, entry)
+        rel_path = os.path.join(base_path, entry).replace('\\', '/')
+        
+        if os.path.isdir(full_path):
+            children = get_docs_tree(full_path, rel_path)
+            if children:  # 只有该目录下有md文件才加入
+                tree.append({
+                    "name": entry,
+                    "type": "dir",
+                    "path": rel_path,
+                    "children": children
+                })
+        elif os.path.isfile(full_path) and entry.endswith('.md'):
+            tree.append({
+                "name": entry.replace('.md', ''),
+                "type": "file",
+                "path": rel_path
+            })
+    return tree
+
+@app.route('/api/docs/tree', methods=['GET'])
+def api_docs_tree():
+    """获取文档结构树"""
+    docs_dir = os.path.join(BASE_DIR, 'docs')
+    tree = get_docs_tree(docs_dir)
+    return jsonify(tree)
+
+@app.route('/api/docs/content/<path:filepath>', methods=['GET'])
+def api_docs_content(filepath):
+    """获取具体文档的内容"""
+    docs_dir = os.path.join(BASE_DIR, 'docs')
+    # 安全处理，防止目录穿越
+    safe_path = os.path.abspath(os.path.join(docs_dir, filepath))
+    if not safe_path.startswith(os.path.abspath(docs_dir)):
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    if not os.path.exists(safe_path) or not safe_path.endswith('.md'):
+        return jsonify({"error": "Not Found"}), 404
+        
+    with open(safe_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    return jsonify({"content": content})
+
 # 提供本地视频文件的访问路由
 @app.route('/videodataset/<filename>')
 def serve_video(filename):
@@ -77,6 +128,13 @@ def api_recommend():
     return jsonify({
         "recommendations": recommendations
     })
+
+@app.route('/api/visualize', methods=['POST'])
+def api_visualize():
+    data = request.json or {}
+    history = data.get('history', [])
+    vis_data = recommender.get_visualization_data(history)
+    return jsonify(vis_data)
 
 if __name__ == '__main__':
     print("启动人工智能推荐系统 Demo...")
