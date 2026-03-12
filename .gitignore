@@ -1,2 +1,3 @@
 *.mp4
-/__pycache__/*
+/__pycache__/
+/docs/成果展示/
