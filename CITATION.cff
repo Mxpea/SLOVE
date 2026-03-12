@@ -1,22 +1,53 @@
 cff-version: 1.2.0
-message: "If you use the MicroLens dataset, please cite the following paper."
-type: article
+title: "S.L.O.V.E: Similarity Learning for Online Video Exploration"
+message: "If you use this project in your research, please cite it using the metadata below."
+type: software
+
 authors:
-  - family-names: Ni
-    given-names: Yongxin
-  - family-names: Cheng
-    given-names: Yu
-  - family-names: Liu
-    given-names: Xiangyan
-  - family-names: Fu
-    given-names: Junchen
-  - family-names: Li
-    given-names: Youhua
-  - family-names: He
-    given-names: Xiangnan
-title: "A Content-Driven Micro-Video Recommendation Dataset at Scale"
-year: 2023
-journal: "arXiv preprint"
-eprint: "2309.15379"
-eprint-type: arXiv
-eprint-url: "https://arxiv.org/abs/2309.15379"
+  - family-names: "TEAM"
+    given-names: "11"
+    affiliation: "Qingdao University of Science and Technology"
+
+abstract: >
+  S.L.O.V.E (Similarity Learning for Online Video Exploration) is a research
+  demo project exploring the application of higher mathematics in recommendation
+  systems. The project demonstrates how vector space models, TF-IDF text
+  vectorization, and cosine similarity can be used to build a simple
+  short-video recommendation system based on the MicroLens dataset.
+
+repository-code: "https://github.com/your-username/your-repo-name"
+
+keywords:
+  - recommendation system
+  - vector space model
+  - cosine similarity
+  - tf-idf
+  - machine learning
+  - short video
+
+license: MIT
+version: "1.0.0"
+date-released: 2026-03-12
+
+references:
+  - type: dataset
+    title: "MicroLens: A Content-Driven Micro-Video Recommendation Dataset at Scale"
+    authors:
+      - family-names: "Ni"
+        given-names: "Yongxin"
+      - family-names: "Cheng"
+        given-names: "Yu"
+      - family-names: "Liu"
+        given-names: "Xiangyan"
+      - family-names: "Fu"
+        given-names: "Junchen"
+      - family-names: "Li"
+        given-names: "Youhua"
+      - family-names: "He"
+        given-names: "Xiangnan"
+      - family-names: "Zhang"
+        given-names: "Yongfeng"
+      - family-names: "Yuan"
+        given-names: "Fajie"
+    year: 2023
+    url: "https://github.com/westlake-repl/MicroLens"
