@@ -137,5 +137,5 @@ def api_visualize():
     return jsonify(vis_data)
 
 if __name__ == '__main__':
-    print("启动人工智能推荐系统 Demo...")
+    print("正在启动...")
     app.run(host='0.0.0.0', port=5000, debug=True)

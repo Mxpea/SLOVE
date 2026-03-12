@@ -231,7 +231,7 @@ scene.background = null;
 scene.fog = new THREE.FogExp2(0x05020a, 0.045);
 
 const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100); // 60°视野，近裁剪 0.1，远裁剪 100
-camera.position.set(3.2, 3.8, 4.2); // 设置初始视角便于看到模型正面与光源
+camera.position.set(2.2, 2.6, 2.8); // 调整更近的初始视角，拉近模型显示比例
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight);
@@ -301,10 +301,9 @@ const renderTarget = new THREE.WebGLRenderTarget(innerWidth, innerHeight, {
   minFilter: THREE.LinearFilter,
   magFilter: THREE.LinearFilter,
   format: THREE.RGBAFormat,
-  depthBuffer: true
+  depthBuffer: true,
+  samples: 4 // 开启 MSAA 多重采样抗锯齿
 });
-renderTarget.depthTexture = new THREE.DepthTexture();
-renderTarget.depthTexture.type = THREE.UnsignedShortType;
 
 /* 屏幕空间径向模糊 Shader */
 const RadialBlurShader = {
@@ -652,7 +651,7 @@ let isDragging = false;
 let lastInteractTime = performance.now();
 const targetCameraOffset = new THREE.Vector3();
 const currentCameraOffset = new THREE.Vector3();
-const defaultCamSpherical = new THREE.Spherical().setFromVector3(new THREE.Vector3(3.2, 3.8, 4.2));
+const defaultCamSpherical = new THREE.Spherical().setFromVector3(new THREE.Vector3(2.2, 2.6, 2.8)); // 同样减小默认回归视角，防止鼠标悬停恢复时变远
 
 // ... events ...
 renderer.domElement.addEventListener('pointerdown', () => {

@@ -31,12 +31,14 @@ class VideoRecommender:
         self.video_id_to_idx = {vid: idx for idx, vid in enumerate(self.df['video_id'])}
         self.idx_to_video_id = {idx: vid for idx, vid in enumerate(self.df['video_id'])}
 
-        # 使用 PCA 将高维向量降维至 2D，用于前端可视化
-        self.pca = PCA(n_components=2)
-        if len(self.video_vectors) > 2:
-            self.video_coords_2d = self.pca.fit_transform(self.video_vectors)
-        else:
-            self.video_coords_2d = np.zeros((len(self.video_vectors), 2))
+        # 使用 PCA 将高维向量降维至 3D，用于前端可视化(同时兼容 2D/3D)
+        n_comp = min(3, len(self.video_vectors)) if len(self.video_vectors) > 0 else 1
+        self.pca = PCA(n_components=n_comp)
+        
+        self.video_coords_3d = np.zeros((len(self.video_vectors), 3))
+        if len(self.video_vectors) > 0:
+            coords = self.pca.fit_transform(self.video_vectors)
+            self.video_coords_3d[:, :n_comp] = coords
         
         # 获取特征词汇表映射 (索引 -> 词语)
         self.feature_names = self.vectorizer.get_feature_names_out()
@@ -95,15 +97,16 @@ class VideoRecommender:
                 
         return recommendations
     def get_visualization_data(self, history_ids):
-        # 返回所有视频的 2D 坐标
+        # 返回所有视频的 3D 坐标
         nodes = []
         for i in range(len(self.video_vectors)):
             nodes.append({
                 'video_id': int(self.df.iloc[i]['video_id']),
                 'title': str(self.df.iloc[i]['title']),
                 'tags': str(self.df.iloc[i]['tags']),
-                'x': float(self.video_coords_2d[i, 0]),
-                'y': float(self.video_coords_2d[i, 1])
+                'x': float(self.video_coords_3d[i, 0]),
+                'y': float(self.video_coords_3d[i, 1]),
+                'z': float(self.video_coords_3d[i, 2])
             })
         
         user_node = None
@@ -112,23 +115,25 @@ class VideoRecommender:
             if indices:
                 history_vectors = self.video_vectors[indices]
                 user_vector = np.mean(history_vectors, axis=0).reshape(1, -1)
-                user_coord = self.pca.transform(user_vector)[0]
-                
+                user_coord_raw = self.pca.transform(user_vector)[0]
+                user_coord = np.zeros(3)
+                user_coord[:len(user_coord_raw)] = user_coord_raw
+
                 # 获取用户的 Top Keyword
                 top_k = 10
                 top_keyword_indices = user_vector[0].argsort()[::-1][:top_k]
-                user_keywords = [{'word': str(self.feature_names[idx]), 'weight': float(user_vector[0, idx])} 
+                user_keywords = [{'word': str(self.feature_names[idx]), 'weight': float(user_vector[0, idx])}
                                  for idx in top_keyword_indices if user_vector[0, idx] > 0]
-                
+
                 user_node = {
                     'x': float(user_coord[0]),
                     'y': float(user_coord[1]),
+                    'z': float(user_coord[2]),
                     'keywords': user_keywords
                 }
                 
                 # 计算每个节点与用户的距离（用于辅助可视化）
-                for node in nodes:
-                    idx = self.video_id_to_idx[node['video_id']]
-                    node['similarity'] = float(cosine_similarity(user_vector, self.video_vectors[idx].reshape(1, -1))[0][0])
-                
+                sims = cosine_similarity(user_vector, self.video_vectors)[0]
+                for i, node in enumerate(nodes):
+                    node['similarity'] = float(sims[i])
         return {'videos': nodes, 'user': user_node}

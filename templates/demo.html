@@ -17,7 +17,9 @@
             margin-top: 40px;
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <!-- 使用本地静态资源，避免网络节点和防火墙引起的加载失败或极慢 -->
+    <script src="/static/echarts.min.js"></script>
+    <script src="/static/echarts-gl.min.js"></script>
 </head>
 <body>
     <header>
@@ -35,7 +37,11 @@
 
     
     <div class="container">
-        <h2 class="section-title">> 向量空间分布模型 <span style="font-size: 0.5em; color: rgba(255,255,255,0.5);">[2D PCA Projection]</span></h2>
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <h2 class="section-title" style="border-bottom: none; margin-bottom: 0;">> 向量空间分布模型 <span id="viz-title-ext" style="font-size: 0.5em; color: rgba(255,255,255,0.5);">[2D PCA Projection]</span></h2>
+            <button id="toggle-dimension-btn" style="background: rgba(0, 246, 255, 0.1); border: 1px solid #00f6ff; color: #00f6ff; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-family: 'Orbitron', monospace; transition: all 0.3s;">切换至 3D 视图</button>
+        </div>
+        <div style="border-bottom: 1px solid rgba(0, 246, 255, 0.2); margin-bottom: 10px; width: 100%;"></div>
         <div id="vector-viz" style="width: 100%; height: 450px; background: rgba(5,3,10,0.6); border: 1px solid rgba(0,246,255,0.2); border-radius: 4px; box-shadow: 0 0 15px rgba(0,246,255,0.1); margin-bottom: 40px; position: relative;">
             <div id="viz-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #00f6ff; font-family: monospace; animation: pulse 1.5s infinite;">
                 模型数据降维中 (LOADING PCA)...
@@ -69,90 +75,123 @@
             .then(res => res.json())
             .then(data => {
                 document.getElementById('viz-loading').style.display = 'none';
-                const chart = echarts.init(document.getElementById('vector-viz'));
-                
-                const seriesData = [{
-                    name: '全部视频',
-                    type: 'scatter',
-                    symbolSize: function(val) {
-                        return val[4] > 0.1 ? 16 : 8; // If similar, larger symbol
-                    },
-                    itemStyle: {
-                        color: 'rgba(0, 246, 255, 0.6)',
-                        shadowBlur: 10,
-                        shadowColor: '#00f6ff'
-                    },
-                    data: data.videos.map(v => ({
-                        value: [v.x, v.y, v.title, v.tags, v.similarity || 0, v.video_id],
-                        itemStyle: {
-                            color: v.similarity && v.similarity > 0.1 ? 'rgba(255, 43, 214, 0.8)' : 'rgba(0, 246, 255, 0.6)',
-                            shadowColor: v.similarity && v.similarity > 0.1 ? '#ff2bd6' : '#00f6ff'
-                        }
-                    }))
-                }];
+                let chart = echarts.init(document.getElementById('vector-viz'));
+                let is3D = false;
 
-                if (data.user) {
-                    seriesData.push({
-                        name: '用户特征坐标',
-                        type: 'scatter',
-                        symbolSize: 24,
-                        itemStyle: {
-                            color: '#ff2bd6',
-                            shadowBlur: 20,
-                            shadowColor: '#ff2bd6',
-                            borderColor: '#fff',
-                            borderWidth: 2
+                function renderChart() {
+                    let baseItemStyle = is3D ? { color: 'rgba(0, 246, 255, 0.6)' } : { color: 'rgba(0, 246, 255, 0.6)', shadowBlur: 10, shadowColor: '#00f6ff' };
+                    let userItemStyle = is3D ? { color: '#ff2bd6' } : { color: '#ff2bd6', shadowBlur: 20, shadowColor: '#ff2bd6', borderColor: '#fff', borderWidth: 2 };
+
+                    const seriesData = [{
+                        name: '全部视频',
+                        type: is3D ? 'scatter3D' : 'scatter',
+                        coordinateSystem: is3D ? 'cartesian3D' : 'cartesian2d',
+                        symbolSize: function(val) {
+                            let sim = val[is3D ? 5 : 4];
+                            return sim > 0.1 ? 16 : 8; // If similar, larger symbol
                         },
-                        data: [{
-                            value: [data.user.x, data.user.y, 'User Vector']
-                        }]
+                        itemStyle: baseItemStyle,
+                        data: data.videos.map(v => ({
+                            value: is3D ? [v.x, v.y, v.z, v.title, v.tags, v.similarity || 0, v.video_id] 
+                                        : [v.x, v.y, v.title, v.tags, v.similarity || 0, v.video_id],
+                            itemStyle: {
+                                color: (v.similarity && v.similarity > 0.1) ? 'rgba(255, 43, 214, 0.8)' : 'rgba(0, 246, 255, 0.6)'
+                            }
+                        }))
+                    }];
+
+                    if (data.user) {
+                        seriesData.push({
+                            name: '用户特征坐标',
+                            type: is3D ? 'scatter3D' : 'scatter',
+                            coordinateSystem: is3D ? 'cartesian3D' : 'cartesian2d',
+                            symbolSize: 24,
+                            itemStyle: userItemStyle,
+                            data: [{
+                                value: is3D ? [data.user.x, data.user.y, data.user.z, 'User Vector']
+                                            : [data.user.x, data.user.y, 'User Vector']
+                            }]
+                        });
+                    }
+
+                    const tooltipFormatter = function (param) {
+                        if (param.seriesName === '用户特征坐标') {
+                            let tip = '<strong style="color:#ff2bd6;">[ 用户特征雷达 (User Vector) ]</strong><br/>';
+                            data.user.keywords.forEach(kw => {
+                                tip += `${kw.word}: ${(kw.weight).toFixed(4)}<br/>`;
+                            });
+                            return tip;
+                        }
+                        const val = param.data.value;
+                        const tIdx = is3D ? 3 : 2;
+                        const tagsIdx = is3D ? 4 : 3;
+                        const simIdx = is3D ? 5 : 4;
+                        return `
+                            <strong style="color:#00f6ff">${val[tIdx]}</strong><br/>
+                            <span style="color:rgba(255,255,255,0.6)">标签: ${val[tagsIdx]}</span><br/>
+                            ${val[simIdx] > 0 ? `<span style="color:#ff2bd6">匹配度: ${(val[simIdx]*100).toFixed(1)}%</span>` : ''}
+                        `;
+                    };
+
+                    let option = {
+                        backgroundColor: 'transparent',
+                        tooltip: {
+                            backgroundColor: 'rgba(5, 3, 10, 0.9)',
+                            borderColor: '#00f6ff',
+                            textStyle: { color: '#fff' },
+                            formatter: tooltipFormatter
+                        }
+                    };
+
+                    if (is3D) {
+                        option.grid3D = {
+                            viewControl: { autoRotate: true, autoRotateSpeed: 4 },
+                            axisLine: { lineStyle: { color: 'rgba(0, 246, 255, 0.3)' } },
+                            splitLine: { lineStyle: { color: 'rgba(0, 246, 255, 0.1)' } },
+                            axisPointer: { lineStyle: { color: 'rgba(255, 43, 214, 0.4)' } },
+                            environment: 'transparent'
+                        };
+                        option.xAxis3D = { type: 'value', name: 'X' };
+                        option.yAxis3D = { type: 'value', name: 'Y' };
+                        option.zAxis3D = { type: 'value', name: 'Z' };
+                        option.series = seriesData;
+                    } else {
+                        option.grid = { left: '2%', right: '2%', top: '5%', bottom: '5%' };
+                        option.xAxis = {
+                            type: 'value',
+                            splitLine: { lineStyle: { color: 'rgba(0, 246, 255, 0.1)', type: 'dashed' } },
+                            axisLabel: { show: false }
+                        };
+                        option.yAxis = {
+                            type: 'value',
+                            splitLine: { lineStyle: { color: 'rgba(0, 246, 255, 0.1)', type: 'dashed' } },
+                            axisLabel: { show: false }
+                        };
+                        option.series = seriesData;
+                    }
+
+                    chart.dispose(); // 用 dispose 完全销毁旧的上下文（特别是跨 2D 和 3D GL 的时候）
+                    chart = echarts.init(document.getElementById('vector-viz'));
+
+                    chart.setOption(option);
+                    
+                    // 重新绑定点击事件
+                    chart.on('click', function(params) {
+                        if (params.seriesName === '全部视频') {
+                            const vIdIdx = is3D ? 6 : 5;
+                            window.location.href = `/video/${params.data.value[vIdIdx]}`;
+                        }
                     });
                 }
 
-                const option = {
-                    backgroundColor: 'transparent',
-                    tooltip: {
-                        backgroundColor: 'rgba(5, 3, 10, 0.9)',
-                        borderColor: '#00f6ff',
-                        textStyle: { color: '#fff' },
-                        formatter: function (param) {
-                            if (param.seriesName === '用户特征坐标') {
-                                let tip = '<strong style="color:#ff2bd6;">[ 用户特征雷达 (User Vector) ]</strong><br/>';
-                                data.user.keywords.forEach(kw => {
-                                    tip += `${kw.word}: ${(kw.weight).toFixed(4)}<br/>`;
-                                });
-                                return tip;
-                            }
-                            const val = param.data.value;
-                            return `
-                                <strong style="color:#00f6ff">${val[2]}</strong><br/>
-                                <span style="color:rgba(255,255,255,0.6)">标签: ${val[3]}</span><br/>
-                                ${val[4] > 0 ? `<span style="color:#ff2bd6">匹配度: ${(val[4]*100).toFixed(1)}%</span>` : ''}
-                            `;
-                        }
-                    },
-                    grid: {
-                        left: '2%', right: '2%', top: '5%', bottom: '5%'
-                    },
-                    xAxis: {
-                        type: 'value',
-                        splitLine: { lineStyle: { color: 'rgba(0, 246, 255, 0.1)', type: 'dashed' } },
-                        axisLabel: { show: false }
-                    },
-                    yAxis: {
-                        type: 'value',
-                        splitLine: { lineStyle: { color: 'rgba(0, 246, 255, 0.1)', type: 'dashed' } },
-                        axisLabel: { show: false }
-                    },
-                    series: seriesData
-                };
+                renderChart();
 
-                chart.setOption(option);
-                
-                chart.on('click', function(params) {
-                    if (params.seriesName === '全部视频') {
-                        window.location.href = `/video/${params.data.value[5]}`;
-                    }
+                const toggleBtn = document.getElementById('toggle-dimension-btn');
+                toggleBtn.addEventListener('click', () => {
+                    is3D = !is3D;
+                    document.getElementById('viz-title-ext').innerText = is3D ? '[3D PCA Projection]' : '[2D PCA Projection]';
+                    toggleBtn.innerText = is3D ? '切换至 2D 视图' : '切换至 3D 视图';
+                    renderChart();
                 });
 
                 let resizeTimer;
