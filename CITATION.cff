@@ -15,7 +15,7 @@ abstract: >
   vectorization, and cosine similarity can be used to build a simple
   short-video recommendation system based on the MicroLens dataset.
 
-repository-code: "https://github.com/your-username/your-repo-name"
+repository-code: "https://github.com/Mxpea/SLOVE"
 
 keywords:
   - recommendation system
