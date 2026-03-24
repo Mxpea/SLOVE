@@ -272,7 +272,7 @@
                             card.className = 'video-card';
                             card.onclick = () => window.location.href = `/video/${r.video_id}`;
                             card.innerHTML = `
-                                <h3>${r.title}</span></h3>
+                                  <h3>${r.title}</h3>
                                 <div class="score-badge" style="float:none; display:inline-block; margin-top:5px; background:rgba(255,43,214,0.1); border:1px solid rgba(255,43,214,0.3); color:#ff2bd6; border-radius:2px; padding:2px 6px;">推荐相似度: ${(r.score * 100).toFixed(1)}%</div><br>
                                 <div class="tags">${r.tags}</div>
                             `;

@@ -43,6 +43,21 @@ class VideoRecommender:
         # 获取特征词汇表映射 (索引 -> 词语)
         self.feature_names = self.vectorizer.get_feature_names_out()
 
+        # 缓存可视化基础数据，避免每次请求重复构建
+        self.cached_vis_nodes = []
+        for i in range(len(self.video_vectors)):
+            self.cached_vis_nodes.append({
+                'video_id': int(self.df.iloc[i]['video_id']),
+                'title': str(self.df.iloc[i]['title']),
+                'tags': str(self.df.iloc[i]['tags']),
+                'x': float(self.video_coords_3d[i, 0]),
+                'y': float(self.video_coords_3d[i, 1]),
+                'z': float(self.video_coords_3d[i, 2])
+            })
+
+    def len(self):
+        return len(self.df)
+
     def get_all_videos(self, limit=50, randomize=False):
         """返回视频信息（可随机）"""
         if randomize:
@@ -50,10 +65,10 @@ class VideoRecommender:
         return self.df[['video_id', 'title', 'tags']].head(limit).to_dict(orient='records')
 
     def get_video(self, video_id):
-        """获取单个视频信息"""
-        row = self.df[self.df['video_id'] == video_id]
-        if not row.empty:
-            return row.iloc[0].to_dict()
+        """获取单个视频信息，时间复杂度 O(1)"""
+        if video_id in self.video_id_to_idx:
+            idx = self.video_id_to_idx[video_id]
+            return self.df.iloc[idx].to_dict()
         return None
 
     def recommend(self, history_ids, top_n=5):
@@ -97,18 +112,9 @@ class VideoRecommender:
                 
         return recommendations
     def get_visualization_data(self, history_ids):
-        # 返回所有视频的 3D 坐标
-        nodes = []
-        for i in range(len(self.video_vectors)):
-            nodes.append({
-                'video_id': int(self.df.iloc[i]['video_id']),
-                'title': str(self.df.iloc[i]['title']),
-                'tags': str(self.df.iloc[i]['tags']),
-                'x': float(self.video_coords_3d[i, 0]),
-                'y': float(self.video_coords_3d[i, 1]),
-                'z': float(self.video_coords_3d[i, 2])
-            })
-        
+        # 避免每次重复全量循环，直接浅拷贝基础缓存节点
+        nodes = [dict(node) for node in self.cached_vis_nodes]
+
         user_node = None
         if history_ids:
             indices = [self.video_id_to_idx[vid] for vid in history_ids if vid in self.video_id_to_idx]
@@ -131,7 +137,7 @@ class VideoRecommender:
                     'z': float(user_coord[2]),
                     'keywords': user_keywords
                 }
-                
+
                 # 计算每个节点与用户的距离（用于辅助可视化）
                 sims = cosine_similarity(user_vector, self.video_vectors)[0]
                 for i, node in enumerate(nodes):

@@ -6,10 +6,9 @@
     <title>技术文档 - 推荐系统 Demo</title>
     <link rel="icon" type="image/png" href="/icon.png" />
     <link rel="stylesheet" href="/static/style.css">
-    <!-- 引入 marked.js 解析 Markdown -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- 引入 MathJax 用于数学公式渲染 -->
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <!-- 引入本地的 marked.js 解析 Markdown，提升加载速度 -->
+    <script src="/static/marked.min.js?v=4.3.0"></script>
+    <!-- 引入 MathJax 用于数学公式渲染，移除失效且挂起的 polyfill.io -->
     <script>
         window.MathJax = {
             tex: {
@@ -18,8 +17,33 @@
             }
         };
     </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script id="MathJax-script" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
     <style>
+        #engine-loader {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #05030a;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #00f6ff;
+            font-family: 'Orbitron', monospace;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+        .engine-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(0, 246, 255, 0.2);
+            border-radius: 50%;
+            border-top-color: #00f6ff;
+            animation: engine-spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes engine-spin {
+            to { transform: rotate(360deg); }
+        }
         .header-nav {
             background: linear-gradient(180deg, rgba(5,3,10,0.9) 0%, rgba(5,3,10,0.2) 100%);
             border-bottom: 1px solid rgba(0, 246, 255, 0.15);
@@ -288,6 +312,12 @@
     </style>
 </head>
 <body>
+    <!-- 全局加载遮罩，等待引擎(如MathJax)准备完毕 -->
+    <div id="engine-loader">
+        <div class="engine-spinner"></div>
+        <div>正在初始化渲染引擎...</div>
+    </div>
+
     <header class="header-nav">
         <div>
             <h2>技术文档</h2>
@@ -350,7 +380,41 @@
                 return html;
             }
         };
-        marked.use({ renderer });
+
+        // 统一的应用初始化逻辑，等待必须的脚本加载完成后再进行页面绘制
+        function initializeApp() {
+            const markedReady = typeof marked !== 'undefined' && typeof marked.parse === 'function';
+            const mathJaxReady = typeof MathJax !== 'undefined' && typeof MathJax.typesetPromise === 'function';
+
+            if (!markedReady || !mathJaxReady) {
+                // 等待引擎就绪
+                setTimeout(initializeApp, 150);
+                return;
+            }
+
+            // 引擎就绪，配置 marked.js renderer
+            try {
+                marked.use({ renderer });
+            } catch (e) {
+                console.error("Marked.js init error:", e);
+            }
+
+            // 隐藏全局加载层，展示页面
+            const loader = document.getElementById('engine-loader');
+            if (loader) {
+                loader.style.opacity = '0';
+                setTimeout(() => loader.style.display = 'none', 400);
+            }
+
+            // 获取文档树
+            fetchDocsTree();
+
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.add('collapsed');
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", initializeApp);
 
         window.toggleCodeBlock = function(btn) {
             const wrapper = btn.previousElementSibling;
@@ -386,14 +450,6 @@
                 btn.innerHTML = `▼ 展开余下代码 (${linesCount} 行)`;
             }
         };
-
-        document.addEventListener("DOMContentLoaded", () => {
-            fetchDocsTree();
-            
-            if (window.innerWidth <= 768) {
-                document.getElementById('sidebar').classList.add('collapsed');
-            }
-        });
 
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
@@ -481,15 +537,20 @@
                 }
                 const data = await res.json();
 
-                const htmlContent = marked.parse(data.content);
-                document.getElementById('content').innerHTML = htmlContent;
+                // 此时前端脚本必定已由全局 loader 等待验证完毕，可直接调用
+                try {
+                    document.getElementById('content').innerHTML = marked.parse(data.content);
+                } catch (markErr) {
+                    console.error("Marked.js resolve err:", markErr);
+                    document.getElementById('content').innerHTML = "<pre>" + data.content + "</pre>";
+                }
 
-                if (window.MathJax) {
-                    MathJax.typesetPromise([document.getElementById('content')]).catch((err) => console.log(err.message));
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    MathJax.typesetPromise([document.getElementById('content')]).catch(err => console.error("MathJax render error:", err));
                 }
             } catch (err) {
                 console.error("加载文档内容失败", err);
-                document.getElementById('content').innerHTML = '<h2 style="color:#ff2bd6;">[错误] 文档加载失败</h2>';
+                // document.getElementById('content').innerHTML = '<h2 style="color:#ff2bd6;">[错误] 文档加载失败</h2>';
             }
         }
     </script>

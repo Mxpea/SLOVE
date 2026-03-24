@@ -145,4 +145,5 @@ def api_visualize():
 
 if __name__ == '__main__':
     print("正在启动...")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # 关闭 debug 模式以提升生产环境的执行效率和安全性
+    app.run(host='0.0.0.0', port=5000, debug=False)
